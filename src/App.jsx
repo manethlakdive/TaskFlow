@@ -1,16 +1,24 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Navbar from "./components/layout/Navbar";
+import Footer from "./components/layout/Footer";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+
 function App() {
   return (
-    <div className="text-center p-8">
-      <header>
-        <h1 className="text-3xl font-bold mb-1">TaskFlow</h1>
-        <p className="text-gray-500">Team Task Board</p>
-      </header>
-
-      <main className="mt-6">
-        <p>Welcome to TaskFlow — your team's collaborative task board.</p>
-      </main>
-    </div>
-  )
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+      <Footer />
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

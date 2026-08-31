@@ -1,22 +1,22 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Navbar from "./components/layout/Navbar";
-import Footer from "./components/layout/Footer";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import { ModalProvider } from "./context/ModalContext";
+import { AuthProvider } from "./context/AuthContext";
+import ModalRoot from "./components/modals/ModalRoot";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
 
 function App() {
   return (
     <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-      </Routes>
-      <Footer />
+      <AuthProvider>
+        <ModalProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+          <ModalRoot />
+        </ModalProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

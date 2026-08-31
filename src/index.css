@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+body {
+  background-color: #0f0c29; /* Hero eke dark tone ekට close */
+  margin: 0;
+}

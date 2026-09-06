@@ -1,53 +1,84 @@
 import { Router } from "express";
-import { columns, nextId } from "../data/store.js";
+import Board from "../models/Board.js";
 
 const router = Router();
 
-// GET /api/boards  -> returns the whole board (all columns + tasks)
-router.get("/", (req, res) => {
-  res.status(200).json({ columns });
+// helper: there is one shared board for this stage of the project
+const getMainBoard = async () => {
+  let board = await Board.findOne({ name: "Main Board" });
+  if (!board) {
+    board = await Board.create({ name: "Main Board", columns: [] });
+  }
+  return board;
+};
+
+// GET /api/boards -> returns the whole board (all columns + tasks)
+router.get("/", async (req, res) => {
+  try {
+    const board = await getMainBoard();
+    res.status(200).json({ columns: board.columns });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 });
 
-// POST /api/boards/tasks  -> create a new task in a given column
-router.post("/tasks", (req, res) => {
-  const { columnId, title } = req.body;
+// POST /api/boards/tasks -> create a new task in a given column
+router.post("/tasks", async (req, res) => {
+  try {
+    const { columnId, title } = req.body;
 
-  if (!columnId || !title) {
-    return res.status(400).json({ message: "columnId and title are required" });
+    if (!columnId || !title) {
+      return res.status(400).json({ message: "columnId and title are required" });
+    }
+
+    const board = await getMainBoard();
+    const column = board.columns.find((c) => c.key === columnId);
+
+    if (!column) {
+      return res.status(404).json({ message: "Column not found" });
+    }
+
+    column.tasks.push({ title });
+    await board.save();
+
+    const savedTask = column.tasks[column.tasks.length - 1];
+    res.status(201).json({ task: savedTask, columns: board.columns });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-
-  const column = columns.find((c) => c.id === columnId);
-  if (!column) {
-    return res.status(404).json({ message: "Column not found" });
-  }
-
-  const task = { id: nextId(), title };
-  column.tasks.push(task);
-
-  return res.status(201).json({ task, columns });
 });
 
 // PATCH /api/boards/tasks/:taskId/move -> move a task to another column
-router.patch("/tasks/:taskId/move", (req, res) => {
-  const { taskId } = req.params;
-  const { toColumnId } = req.body;
+router.patch("/tasks/:taskId/move", async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { toColumnId } = req.body;
 
-  if (!toColumnId) {
-    return res.status(400).json({ message: "toColumnId is required" });
+    if (!toColumnId) {
+      return res.status(400).json({ message: "toColumnId is required" });
+    }
+
+    const board = await getMainBoard();
+    const fromColumn = board.columns.find((c) =>
+      c.tasks.some((t) => t._id.toString() === taskId)
+    );
+    const toColumn = board.columns.find((c) => c.key === toColumnId);
+
+    if (!fromColumn || !toColumn) {
+      return res.status(404).json({ message: "Task or target column not found" });
+    }
+
+    const task = fromColumn.tasks.find((t) => t._id.toString() === taskId);
+    const taskData = { title: task.title };
+
+    fromColumn.tasks = fromColumn.tasks.filter((t) => t._id.toString() !== taskId);
+    toColumn.tasks.push(taskData);
+
+    await board.save();
+    res.status(200).json({ columns: board.columns });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-
-  const fromColumn = columns.find((c) => c.tasks.some((t) => t.id === taskId));
-  const toColumn = columns.find((c) => c.id === toColumnId);
-
-  if (!fromColumn || !toColumn) {
-    return res.status(404).json({ message: "Task or target column not found" });
-  }
-
-  const task = fromColumn.tasks.find((t) => t.id === taskId);
-  fromColumn.tasks = fromColumn.tasks.filter((t) => t.id !== taskId);
-  toColumn.tasks.push(task);
-
-  return res.status(200).json({ columns });
 });
 
 export default router;

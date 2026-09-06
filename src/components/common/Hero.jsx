@@ -43,7 +43,7 @@ export default function Hero({
           <div className="flex justify-center mb-6">
             <RotatingText
               texts={rotatingTexts}
-              mainClassName="text-3xl md:text-5xl font-extrabold text-indigo-300"
+              mainClassName="text-3xl md:text-5xl font-extrabold text-[#c7d2fe]"
               staggerFrom="last"
               staggerDuration={0.02}
               rotationInterval={2200}

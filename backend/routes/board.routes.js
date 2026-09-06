@@ -1,84 +1,80 @@
 import { Router } from "express";
-import Board from "../models/Board.js";
+import Board from "../models/Board.model.js";
 
 const router = Router();
 
-// helper: there is one shared board for this stage of the project
-const getMainBoard = async () => {
-  let board = await Board.findOne({ name: "Main Board" });
-  if (!board) {
-    board = await Board.create({ name: "Main Board", columns: [] });
-  }
-  return board;
-};
+// This app works with a single board document. Fetch it once per request.
+const getBoard = () => Board.findOne();
 
-// GET /api/boards -> returns the whole board (all columns + tasks)
+// GET /api/boards  -> returns the whole board (all columns + tasks)
 router.get("/", async (req, res) => {
-  try {
-    const board = await getMainBoard();
-    res.status(200).json({ columns: board.columns });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+  const board = await getBoard();
+  if (!board) {
+    return res.status(404).json({ message: "Board not found. Run the seed script first." });
   }
+  return res.status(200).json(board.toPublicJSON());
 });
 
-// POST /api/boards/tasks -> create a new task in a given column
+// POST /api/boards/tasks  -> create a new task in a given column
 router.post("/tasks", async (req, res) => {
-  try {
-    const { columnId, title } = req.body;
+  const { columnId, title } = req.body;
 
-    if (!columnId || !title) {
-      return res.status(400).json({ message: "columnId and title are required" });
-    }
-
-    const board = await getMainBoard();
-    const column = board.columns.find((c) => c.key === columnId);
-
-    if (!column) {
-      return res.status(404).json({ message: "Column not found" });
-    }
-
-    column.tasks.push({ title });
-    await board.save();
-
-    const savedTask = column.tasks[column.tasks.length - 1];
-    res.status(201).json({ task: savedTask, columns: board.columns });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+  if (!columnId || !title) {
+    return res.status(400).json({ message: "columnId and title are required" });
   }
+
+  const board = await getBoard();
+  if (!board) {
+    return res.status(404).json({ message: "Board not found. Run the seed script first." });
+  }
+
+  const column = board.columns.find((c) => c.columnKey === columnId);
+  if (!column) {
+    return res.status(404).json({ message: "Column not found" });
+  }
+
+  column.tasks.push({ title });
+  await board.save();
+
+  const savedColumn = board.columns.find((c) => c.columnKey === columnId);
+  const task = savedColumn.tasks[savedColumn.tasks.length - 1];
+
+  return res.status(201).json({
+    task: { id: task._id.toString(), title: task.title },
+    columns: board.toPublicJSON().columns,
+  });
 });
 
 // PATCH /api/boards/tasks/:taskId/move -> move a task to another column
 router.patch("/tasks/:taskId/move", async (req, res) => {
-  try {
-    const { taskId } = req.params;
-    const { toColumnId } = req.body;
+  const { taskId } = req.params;
+  const { toColumnId } = req.body;
 
-    if (!toColumnId) {
-      return res.status(400).json({ message: "toColumnId is required" });
-    }
-
-    const board = await getMainBoard();
-    const fromColumn = board.columns.find((c) =>
-      c.tasks.some((t) => t._id.toString() === taskId)
-    );
-    const toColumn = board.columns.find((c) => c.key === toColumnId);
-
-    if (!fromColumn || !toColumn) {
-      return res.status(404).json({ message: "Task or target column not found" });
-    }
-
-    const task = fromColumn.tasks.find((t) => t._id.toString() === taskId);
-    const taskData = { title: task.title };
-
-    fromColumn.tasks = fromColumn.tasks.filter((t) => t._id.toString() !== taskId);
-    toColumn.tasks.push(taskData);
-
-    await board.save();
-    res.status(200).json({ columns: board.columns });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+  if (!toColumnId) {
+    return res.status(400).json({ message: "toColumnId is required" });
   }
+
+  const board = await getBoard();
+  if (!board) {
+    return res.status(404).json({ message: "Board not found. Run the seed script first." });
+  }
+
+  const fromColumn = board.columns.find((c) => c.tasks.id(taskId));
+  const toColumn = board.columns.find((c) => c.columnKey === toColumnId);
+
+  if (!fromColumn || !toColumn) {
+    return res.status(404).json({ message: "Task or target column not found" });
+  }
+
+  const task = fromColumn.tasks.id(taskId);
+  const movedTask = { title: task.title };
+
+  fromColumn.tasks.pull(taskId);
+  toColumn.tasks.push(movedTask);
+
+  await board.save();
+
+  return res.status(200).json(board.toPublicJSON());
 });
 
 export default router;

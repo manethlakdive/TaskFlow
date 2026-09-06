@@ -1,16 +1,16 @@
 # TaskFlow Backend
 
-Express REST API with in-memory mock data (no database yet) that serves the TaskFlow (SyncBoard) frontend.
+Express REST API for TaskFlow (SyncBoard), now backed by MongoDB instead of the old in-memory mock store.
 
 ## Overview
 
-This backend provides the API layer for TaskFlow: authentication, board and task management, team members, and invites. Data is currently stored in memory and resets when the server restarts. Persistent storage with MongoDB, real authentication (JWT), automated testing, and real-time updates with Socket.io are planned for later milestones.
+This backend provides the API layer for TaskFlow: authentication, board and task management, team members, and invites. Data is persisted in MongoDB via Mongoose. Real authentication (JWT) and real-time updates with Socket.io are planned for later milestones.
 
 ## Tech Stack
 
 - Node.js
 - Express
-- In-memory mock data store
+- MongoDB + Mongoose
 
 ## Getting Started
 
@@ -18,28 +18,41 @@ This backend provides the API layer for TaskFlow: authentication, board and task
 
 - Node.js (v18 or later recommended)
 - npm
+- A MongoDB connection (local install or a free MongoDB Atlas cluster)
 
 ### Installation
 
 ```bash
 cd backend
 npm install
+cp .env.example .env
+# edit .env and set MONGO_URI to your own connection string
+npm run seed   # first time only — populates starter users, members, board
 npm run dev
 ```
 
 Server starts at **http://localhost:5000**
 
+See `MONGODB_MIGRATION_GUIDE.md` in the project root for the full setup walkthrough.
+
 ## Project Structure
 
 ```
 backend/
-├── data/
-│   └── store.js          # In-memory mock data store
+├── config/
+│   └── db.js              # MongoDB connection
+├── models/
+│   ├── User.model.js
+│   ├── Member.model.js
+│   └── Board.model.js     # embeds columns + tasks
 ├── routes/
 │   ├── auth.routes.js
 │   ├── board.routes.js
 │   ├── invite.routes.js
 │   └── member.routes.js
+├── scripts/
+│   └── seed.js            # populates starter data
+├── .env.example
 ├── server.js
 └── package.json
 ```
@@ -58,7 +71,7 @@ backend/
 
 A full Postman collection (`SyncBoard.postman_collection.json`) is included in this folder for testing every endpoint. Set the `baseUrl` variable to `http://localhost:5000`.
 
-## Test Accounts (Mock Data)
+## Test Accounts (Seeded Data)
 
 | Email                | Password |
 |-----------------------|----------|
@@ -69,4 +82,4 @@ Alternatively, register a new account via `POST /api/auth/register` or the Regis
 
 ## Status
 
-Working REST API with mock data. Database persistence, real authentication, and real-time sync are planned for upcoming milestones.
+Working REST API backed by MongoDB. Real authentication (JWT) and real-time sync with Socket.io are planned for upcoming milestones.

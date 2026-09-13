@@ -2,8 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { useModal } from "../../context/ModalContext";
 import { useAuth } from "../../context/AuthContext";
 import PillNav from "../effects/PillNav/PillNav";
+import NotificationBell from "../common/NotificationBell";
 
-export default function DashboardNavbar() {
+export default function DashboardNavbar({ onOpenBoards }) {
   const navigate = useNavigate();
   const { openModal } = useModal();
   const { logout } = useAuth();
@@ -14,20 +15,19 @@ export default function DashboardNavbar() {
   };
 
   const navItems = [
-    { label: "My Boards", href: "#", onClick: () => {} },
+    { label: "My Boards", href: "#", onClick: () => onOpenBoards?.() },
     { label: "Profile", href: "#", onClick: () => openModal("profile") },
     { label: "Logout", href: "#", onClick: handleLogout },
   ];
 
   return (
     <PillNav
-  logo="/logo.png"
-  logoAlt="TaskFlow"
-  items={navItems}
-  baseColor="#a5b4fc"
-  pillColor="rgba(255, 255, 255, 0.1)"
-  hoveredPillTextColor="#1e1b4b"
-  pillTextColor="#ffffff"
-/>
+      logoSlot={<NotificationBell />}
+      items={navItems}
+      baseColor="#a5b4fc"
+      pillColor="rgba(255, 255, 255, 0.1)"
+      hoveredPillTextColor="#1e1b4b"
+      pillTextColor="#ffffff"
+    />
   );
 }

@@ -1,11 +1,19 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 const API_URL = "http://localhost:5001/api";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("taskflow_user");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user) localStorage.setItem("taskflow_user", JSON.stringify(user));
+    else localStorage.removeItem("taskflow_user");
+  }, [user]);
 
   const login = async (email, password) => {
     setError("");

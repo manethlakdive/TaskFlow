@@ -1,10 +1,3 @@
-// Run this once after connecting your DB for the first time:
-//   npm run seed
-//
-// It clears existing data and inserts the same starter data that used to
-// live in data/store.js, so the app looks and behaves the same as before —
-// just backed by MongoDB now.
-
 import "dotenv/config";
 import mongoose from "mongoose";
 import connectDB from "../config/db.js";
@@ -28,28 +21,7 @@ const run = async () => {
     { name: "Nipun", email: "nipun@example.com" },
   ]);
 
-  await Board.create({
-    name: "Main Board",
-    columns: [
-      {
-        columnKey: "todo",
-        title: "To Do",
-        tasks: [{ title: "Design database schema" }, { title: "Set up GitHub repo" }],
-      },
-      {
-        columnKey: "doing",
-        title: "Doing",
-        tasks: [{ title: "Build Board component" }],
-      },
-      {
-        columnKey: "done",
-        title: "Done",
-        tasks: [{ title: "Create Vite project" }],
-      },
-    ],
-  });
-
-  console.log("Seed complete: users, members, and board created.");
+  console.log("Seed complete: users and members created. Boards are created per-user via the app now.");
   await mongoose.disconnect();
   process.exit(0);
 };

@@ -1,80 +1,159 @@
 import { Router } from "express";
 import Board from "../models/Board.model.js";
+import { getIO } from "../socket.js";
 
 const router = Router();
 
-// This app works with a single board document. Fetch it once per request.
-const getBoard = () => Board.findOne();
+const defaultColumns = () => [
+  { columnKey: "todo", title: "To Do", tasks: [] },
+  { columnKey: "doing", title: "Doing", tasks: [] },
+  { columnKey: "done", title: "Done", tasks: [] },
+];
 
-// GET /api/boards  -> returns the whole board (all columns + tasks)
-router.get("/", async (req, res) => {
-  const board = await getBoard();
-  if (!board) {
-    return res.status(404).json({ message: "Board not found. Run the seed script first." });
-  }
-  return res.status(200).json(board.toPublicJSON());
+// board eke room ekata update ekak broadcast karana helper
+const broadcastBoardUpdate = (board) => {
+  getIO().to(`board:${board._id}`).emit("board:update", board.toPublicJSON());
+};
+
+// GET /api/boards/mine?userId=... -> owner widihata witharak nemei, member widihatath boards
+router.get("/mine", async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ message: "userId is required" });
+
+  const boards = await Board.find({
+    $or: [{ owner: userId }, { members: userId }],
+  }).sort({ createdAt: -1 });
+
+  return res.status(200).json({ boards: boards.map((b) => b.toSummaryJSON()) });
 });
 
-// POST /api/boards/tasks  -> create a new task in a given column
-router.post("/tasks", async (req, res) => {
-  const { columnId, title } = req.body;
+// GET /api/boards/:boardId -> full board (columns + tasks)
+router.get("/:boardId", async (req, res) => {
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+  return res.status(200).json({ board: board.toPublicJSON() });
+});
 
-  if (!columnId || !title) {
-    return res.status(400).json({ message: "columnId and title are required" });
-  }
+// GET /api/boards/:boardId/members -> populated member list for this board
+router.get("/:boardId/members", async (req, res) => {
+  const board = await Board.findById(req.params.boardId).populate("members", "name email");
+  if (!board) return res.status(404).json({ message: "Board not found" });
 
-  const board = await getBoard();
-  if (!board) {
-    return res.status(404).json({ message: "Board not found. Run the seed script first." });
-  }
-
-  const column = board.columns.find((c) => c.columnKey === columnId);
-  if (!column) {
-    return res.status(404).json({ message: "Column not found" });
-  }
-
-  column.tasks.push({ title });
-  await board.save();
-
-  const savedColumn = board.columns.find((c) => c.columnKey === columnId);
-  const task = savedColumn.tasks[savedColumn.tasks.length - 1];
-
-  return res.status(201).json({
-    task: { id: task._id.toString(), title: task.title },
-    columns: board.toPublicJSON().columns,
+  return res.status(200).json({
+    members: board.members.map((m) => ({ id: m._id.toString(), name: m.name, email: m.email })),
   });
 });
 
-// PATCH /api/boards/tasks/:taskId/move -> move a task to another column
-router.patch("/tasks/:taskId/move", async (req, res) => {
-  const { taskId } = req.params;
+// POST /api/boards -> create a new board
+router.post("/", async (req, res) => {
+  const { userId, name, description, deadline } = req.body;
+  if (!userId || !name) return res.status(400).json({ message: "userId and name are required" });
+
+  const board = await Board.create({
+    owner: userId,
+    name,
+    description: description || "",
+    columns: defaultColumns(),
+    deadline: deadline || null,
+  });
+
+  return res.status(201).json({ board: board.toPublicJSON() });
+});
+
+// PATCH /api/boards/:boardId -> rename / update description / deadline
+router.patch("/:boardId", async (req, res) => {
+  const { name, description, deadline } = req.body;
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  if (name !== undefined) board.name = name;
+  if (description !== undefined) board.description = description;
+  if (deadline !== undefined) board.deadline = deadline || null;
+  await board.save();
+
+  broadcastBoardUpdate(board);
+  return res.status(200).json({ board: board.toPublicJSON() });
+});
+
+// DELETE /api/boards/:boardId
+router.delete("/:boardId", async (req, res) => {
+  const board = await Board.findByIdAndDelete(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  getIO().to(`board:${board._id}`).emit("board:deleted", { boardId: board._id.toString() });
+  return res.status(200).json({ message: "Board deleted" });
+});
+
+// POST /api/boards/:boardId/tasks -> new task always lands in "todo"
+router.post("/:boardId/tasks", async (req, res) => {
+  const { title, description } = req.body;
+  if (!title) return res.status(400).json({ message: "title is required" });
+
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  const todoColumn = board.columns.find((c) => c.columnKey === "todo");
+  todoColumn.tasks.push({ title, description: description || "" });
+  await board.save();
+
+  broadcastBoardUpdate(board);
+  return res.status(201).json({ board: board.toPublicJSON() });
+});
+
+// PATCH /api/boards/:boardId/tasks/:taskId -> edit title/description
+router.patch("/:boardId/tasks/:taskId", async (req, res) => {
+  const { title, description } = req.body;
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  const column = board.columns.find((c) => c.tasks.id(req.params.taskId));
+  if (!column) return res.status(404).json({ message: "Task not found" });
+
+  const task = column.tasks.id(req.params.taskId);
+  if (title !== undefined) task.title = title;
+  if (description !== undefined) task.description = description;
+  await board.save();
+
+  broadcastBoardUpdate(board);
+  return res.status(200).json({ board: board.toPublicJSON() });
+});
+
+// DELETE /api/boards/:boardId/tasks/:taskId
+router.delete("/:boardId/tasks/:taskId", async (req, res) => {
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  const column = board.columns.find((c) => c.tasks.id(req.params.taskId));
+  if (!column) return res.status(404).json({ message: "Task not found" });
+
+  column.tasks.pull(req.params.taskId);
+  await board.save();
+
+  broadcastBoardUpdate(board);
+  return res.status(200).json({ board: board.toPublicJSON() });
+});
+
+// PATCH /api/boards/:boardId/tasks/:taskId/move
+router.patch("/:boardId/tasks/:taskId/move", async (req, res) => {
   const { toColumnId } = req.body;
+  if (!toColumnId) return res.status(400).json({ message: "toColumnId is required" });
 
-  if (!toColumnId) {
-    return res.status(400).json({ message: "toColumnId is required" });
-  }
+  const board = await Board.findById(req.params.boardId);
+  if (!board) return res.status(404).json({ message: "Board not found" });
 
-  const board = await getBoard();
-  if (!board) {
-    return res.status(404).json({ message: "Board not found. Run the seed script first." });
-  }
-
-  const fromColumn = board.columns.find((c) => c.tasks.id(taskId));
+  const fromColumn = board.columns.find((c) => c.tasks.id(req.params.taskId));
   const toColumn = board.columns.find((c) => c.columnKey === toColumnId);
+  if (!fromColumn || !toColumn) return res.status(404).json({ message: "Task or target column not found" });
 
-  if (!fromColumn || !toColumn) {
-    return res.status(404).json({ message: "Task or target column not found" });
-  }
-
-  const task = fromColumn.tasks.id(taskId);
-  const movedTask = { title: task.title };
-
-  fromColumn.tasks.pull(taskId);
+  const task = fromColumn.tasks.id(req.params.taskId);
+  const movedTask = { title: task.title, description: task.description };
+  fromColumn.tasks.pull(req.params.taskId);
   toColumn.tasks.push(movedTask);
 
   await board.save();
 
-  return res.status(200).json(board.toPublicJSON());
+  broadcastBoardUpdate(board);
+  return res.status(200).json({ board: board.toPublicJSON() });
 });
 
 export default router;

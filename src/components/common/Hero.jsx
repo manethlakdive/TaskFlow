@@ -8,9 +8,21 @@ export default function Hero({
   subtitle,
   buttonText,
   onButtonClick,
+  topRight,
+  bottomLeft,
 }) {
   return (
     <section className="relative min-h-[55vh] md:min-h-[60vh] overflow-hidden bg-slate-950 text-white flex items-center">
+      {topRight && (
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
+          {topRight}
+        </div>
+      )}
+      {bottomLeft && (
+        <div className="absolute bottom-10 left-4 md:bottom-12 md:left-6 z-20">
+          {bottomLeft}
+        </div>
+      )}
       {/* Animated gradient background */}
       <div className="absolute inset-0">
         <GradientWaves
@@ -57,13 +69,13 @@ export default function Hero({
         </p>
 
         {buttonText && (
-  <button
-    onClick={onButtonClick}
-    className="bg-white text-indigo-700 font-semibold px-6 py-3 rounded-lg hover:bg-indigo-100 transition-colors"
-  >
-    {buttonText}
-  </button>
-)}
+          <button
+            onClick={onButtonClick}
+            className="bg-white text-indigo-700 font-semibold px-6 py-3 rounded-lg hover:bg-indigo-100 transition-colors"
+          >
+            {buttonText}
+          </button>
+        )}
       </div>
     </section>
   );

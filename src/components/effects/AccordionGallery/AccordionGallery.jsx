@@ -35,6 +35,7 @@ const AccordionGallery = ({
   const rootRef = useRef(null);
   const panelRefs = useRef([]);
   const mediaRefs = useRef([]);
+  const videoRefs = useRef([]);
   const barRefs = useRef([]);
   const textRefs = useRef([]);
   const tlRef = useRef(null);
@@ -93,6 +94,19 @@ const AccordionGallery = ({
             },
             0
           );
+        }
+
+        // item eke video ekak thiyenawa nam, active wena gaman play karala,
+        // active naethi wela pause karala danawa (performance ekata + hover
+        // walata witharak scroll karana widiyata)
+        const videoEl = videoRefs.current[i];
+        if (videoEl) {
+          if (isActive) {
+            videoEl.currentTime = 0;
+            videoEl.play?.().catch(() => {});
+          } else {
+            videoEl.pause?.();
+          }
         }
 
         if (showLabels && bar && text) {
@@ -204,16 +218,37 @@ const AccordionGallery = ({
             onMouseEnter={() => handleEnter(i)}
             onFocus={() => setActive(i)}
             onKeyDown={e => handleKeyDown(i, e)}
+            onDragOver={item.onDragOver}
+            onDrop={item.onDrop}
             role="listitem"
             tabIndex={0}
             aria-current={isActive ? 'true' : undefined}
             aria-label={item.label}
           >
             <span className="ag-panel__frame">
-              <span className="ag-panel__media" ref={el => (mediaRefs.current[i] = el)}>
-                <img src={item.image} alt={item.alt || item.label || ''} draggable="false" />
-              </span>
-              <span className="ag-panel__overlay" aria-hidden="true" />
+              {item.content ? (
+                <span className="ag-panel__content">{item.content}</span>
+              ) : (
+                <>
+                  <span className="ag-panel__media" ref={el => (mediaRefs.current[i] = el)}>
+                    {item.video ? (
+                      <video
+                        ref={el => (videoRefs.current[i] = el)}
+                        src={item.video}
+                        poster={item.image}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="auto"
+                      />
+                    ) : (
+                      <img src={item.image} alt={item.alt || item.label || ''} draggable="false" />
+                    )}
+                  </span>
+                  <span className="ag-panel__overlay" aria-hidden="true" />
+                </>
+              )}
             </span>
             {showLabels && (
               <span className="ag-panel__label" aria-hidden="true">

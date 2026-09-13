@@ -6,6 +6,7 @@ import './PillNav.css';
 const PillNav = ({
   logo,
   logoAlt = 'Logo',
+  logoSlot,
   items,
   activeHref,
   className = '',
@@ -225,7 +226,16 @@ const PillNav = ({
   return (
     <div className="pill-nav-container">
       <nav className={`pill-nav ${className}`} aria-label="Primary" style={cssVars}>
-        {isRouterLink(items?.[0]?.href) ? (
+        {logoSlot ? (
+          <div
+            className="pill-logo pill-logo--slot"
+            ref={el => {
+              logoRef.current = el;
+            }}
+          >
+            {logoSlot}
+          </div>
+        ) : isRouterLink(items?.[0]?.href) ? (
           <Link
             className="pill-logo"
             to={items[0].href}

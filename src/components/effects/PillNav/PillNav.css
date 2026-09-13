@@ -68,6 +68,11 @@
   display: block;
 }
 
+.pill-logo--slot {
+  overflow: visible;
+  padding: 0;
+}
+
 .pill-list {
   list-style: none;
   display: flex;

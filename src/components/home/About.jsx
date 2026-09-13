@@ -2,19 +2,17 @@ import AccordionGallery from "../effects/AccordionGallery/AccordionGallery";
 
 const steps = [
   {
-    image: "https://picsum.photos/id/1015/900/1200",
+    video: "/videos/create-a-board.webm",
     label: "Create a Board",
   },
   {
-    image: "https://picsum.photos/id/1018/900/1200",
+    video: "/videos/Invite-Your-Team.webm",
     label: "Invite Your Team",
   },
   {
-    image: "https://picsum.photos/id/1043/900/1200",
+    video: "/videos/Track-Progress.webm",
     label: "Track Progress",
   },
-  
-
 ];
 
 export default function About() {

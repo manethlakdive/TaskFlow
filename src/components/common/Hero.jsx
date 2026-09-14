@@ -71,7 +71,7 @@ export default function Hero({
         {buttonText && (
           <button
             onClick={onButtonClick}
-            className="bg-white text-indigo-700 font-semibold px-6 py-3 rounded-lg hover:bg-indigo-100 transition-colors"
+            className="bg-white/10 backdrop-blur-md border border-white/30 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:bg-white/20 hover:border-white/50 transition-all"
           >
             {buttonText}
           </button>
